@@ -53,7 +53,7 @@ export interface ClaimRecord {
   nullifier: string;
   proofBytesHex: string;
   publicInputs: string[];
-  invoice: unknown; // signed invoice doc (kept for demo display; contains no raw medical records beyond itemization)
+  invoice: unknown; // signed invoice doc (display/audit only; contains no raw medical records beyond itemization)
   status: "submitted" | "settled" | "rejected";
   settlementTxHash?: string | null;
   payoutWei?: string | null;

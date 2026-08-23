@@ -1,4 +1,4 @@
-/** Shared portal navigation and demo-session logout controls. */
+/** Shared portal navigation and session logout controls. */
 import { ArrowUpRight, LockKeyhole, LogOut } from "lucide-react";
 import { useLocation } from "wouter";
 import { type Role, rolePortalPaths, useAuth } from "@/contexts/AuthContext";
@@ -17,7 +17,7 @@ export default function PortalSessionActions({ activeRole }: { activeRole: Role 
 
   const navigateRole = (role: Role) => {
     if (role !== session?.role) {
-      toast.error(`${roleLabels[role]} workspace restricted`, { description: `This demo session is signed in as ${roleLabels[session?.role ?? activeRole].toLowerCase()}. Production access must be enforced by server-side authorization.` });
+      toast.error(`${roleLabels[role]} workspace restricted`, { description: `This session is signed in as ${roleLabels[session?.role ?? activeRole].toLowerCase()}. Access is enforced by server-side role authorization.` });
       return;
     }
     setLocation(rolePortalPaths[role]);

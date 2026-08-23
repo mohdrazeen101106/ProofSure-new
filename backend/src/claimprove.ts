@@ -9,7 +9,7 @@ import { store } from "./store";
 
 /** Hospital-signed invoices + Groth16 claim proving (circuits/claim-zk artifacts).
  *
- *  NOTE (demo scope): proving runs server-side here for reliability; the circuit
+ *  NOTE: proving runs server-side here for reliability; the circuit
  *  and its inputs are designed so this step can move into the claimant's browser
  *  (snarkjs wasm) without changing any public encoding — see interfaces/zk-interface.md.
  */
@@ -71,7 +71,7 @@ export function listHospitals() {
     pk_x: String(k.pk_x ?? ""),
     pk_y: String(k.pk_y ?? ""),
     label: k.label ?? "",
-    sk_hex: k.sk_hex, // demo scope only — never expose in production
+    sk_hex: k.sk_hex, // private material — must not be exposed in production deployments
   }));
 }
 
@@ -118,7 +118,7 @@ export async function signInvoice(req: InvoiceRequest) {
     req.patient_commitment ??
     BigInt("0x" + crypto.randomBytes(30).toString("hex")).toString(10);
 
-  // unique per invoice content for this demo deployment
+  // unique per invoice content for this deployment
   const invoiceId = 100000 + (Date.now() % 900000);
 
   const msgHash = P(

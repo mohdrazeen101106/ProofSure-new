@@ -1,6 +1,6 @@
 /**
  * Real authentication against the ProofSure backend (JWT, role-based).
- * Replaces the earlier demo/localStorage-only session model.
+ * JWT-backed session management against the orchestration backend.
  */
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { api, setToken, getToken, type User } from "@/lib/api";

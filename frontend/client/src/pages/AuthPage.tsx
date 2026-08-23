@@ -15,12 +15,6 @@ const roleOptions: Array<{ role: Role; number: string; title: string; copy: stri
   { role: "provider", number: "03", title: "Provider", copy: "Manage public policy state, reserve, and proof-based settlement." },
 ];
 
-const demoAccounts = [
-  { email: "client@proofsure.dev", label: "Demo client" },
-  { email: "hospital@proofsure.dev", label: "Demo hospital" },
-  { email: "provider@proofsure.dev", label: "Demo provider" },
-];
-
 export default function AuthPage({ mode }: { mode: "login" | "signup" }) {
   const [role, setRole] = useState<Role>("client");
   const [email, setEmail] = useState("");
@@ -98,17 +92,6 @@ export default function AuthPage({ mode }: { mode: "login" | "signup" }) {
               {isSignup ? "Create account" : "Sign in"}
             </button>
           </form>
-
-          {!isSignup && (
-            <div className="auth-demo-row">
-              <small>Quick demo access (password <code>demo1234</code>):</small>
-              <div className="auth-demo-buttons">
-                {demoAccounts.map((d) => (
-                  <button key={d.email} disabled={busy} onClick={() => proceed(() => login(d.email, "demo1234"))}>{d.label}</button>
-                ))}
-              </div>
-            </div>
-          )}
 
           <p className="auth-prototype-note"><ShieldCheck size={15} /> Authentication is enforced server-side. Provider actions require the provider role; hospital signing requires the hospital role.</p>
         </div>

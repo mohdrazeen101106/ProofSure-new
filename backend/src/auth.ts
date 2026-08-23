@@ -24,7 +24,7 @@ function loadUsers(): Record<string, User> {
   if (fs.existsSync(USERS_FILE)) {
     return JSON.parse(fs.readFileSync(USERS_FILE, "utf8"));
   }
-  // First boot: seed demo accounts
+  // First boot: seed the initial platform accounts
   const seed: Record<string, User> = {};
   const mk = (email: string, name: string, role: Role, extra: Partial<User> = {}) => {
     seed[email] = {

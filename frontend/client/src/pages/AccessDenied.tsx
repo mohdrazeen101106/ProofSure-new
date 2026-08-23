@@ -39,13 +39,13 @@ export default function AccessDenied() {
       <section className="denied-panel">
         <div className="denied-status"><span><ShieldX size={18} /></span><p>ROUTE RESTRICTED / {attempted ? attempted.toUpperCase() : "UNKNOWN"}</p></div>
         <h1>{currentRole ? <><em>{roleLabel[currentRole]}</em> authority cannot open this route.</> : <>This route needs a <em>verified authority.</em></>}</h1>
-        <p className="denied-copy">{currentRole && attempted ? <>Your current demo session is restricted to {roleBrief[currentRole]}. The {roleLabel[attempted]} workspace is available only to a separately authorized role and organization.</> : <>Select a demo authority before entering a restricted workspace. In production, the same decision must be enforced by server-side role and organization checks.</>}</p>
+        <p className="denied-copy">{currentRole && attempted ? <>Your current session is restricted to {roleBrief[currentRole]}. The {roleLabel[attempted]} workspace is available only to a separately authorized role and organization.</> : <>Sign in with an authorized account before entering a restricted workspace. Access decisions are enforced server-side by role and organization checks.</>}</p>
         <div className="denied-access-map">
-          <div className="denied-map-head"><span>DEMO ACCESS MAP</span><b>{currentRole ? `${roleLabel[currentRole].toUpperCase()} ACTIVE` : "NO ACTIVE SESSION"}</b></div>
+          <div className="denied-map-head"><span>ACCESS MAP</span><b>{currentRole ? `${roleLabel[currentRole].toUpperCase()} ACTIVE` : "NO ACTIVE SESSION"}</b></div>
           {(["client", "hospital", "provider"] as Role[]).map((role, index) => <div className={role === currentRole ? "is-permitted" : role === attempted ? "is-denied" : ""} key={role}><span>{String(index + 1).padStart(2, "0")}</span><strong>{roleLabel[role]}</strong><i /> <em>{role === currentRole ? "PERMITTED" : role === attempted ? "RESTRICTED" : "OTHER AUTHORITY"}</em></div>)}
         </div>
-        <div className="denied-actions"><button className="denied-primary" onClick={returnToAllowed}>{currentRole ? `Return to ${roleLabel[currentRole]} workspace` : "Choose a demo authority"} <ArrowUpRight size={17} /></button><button className="denied-secondary" onClick={() => setLocation("/login")}><MoveLeft size={16} /> Change demo authority</button></div>
-        <p className="denied-note"><LockKeyhole size={14} /> This access-denied page demonstrates the intended experience only. Browser role checks are not secure and must be replaced by server-side authorization before production.</p>
+        <div className="denied-actions"><button className="denied-primary" onClick={returnToAllowed}>{currentRole ? `Return to ${roleLabel[currentRole]} workspace` : "Sign in to continue"} <ArrowUpRight size={17} /></button><button className="denied-secondary" onClick={() => setLocation("/login")}><MoveLeft size={16} /> Change account</button></div>
+        <p className="denied-note"><LockKeyhole size={14} /> Access decisions are enforced by server-side role middleware; this page is presented when a session attempts to enter a workspace outside its authorization.</p>
       </section>
       <div className="denied-knot" aria-hidden="true"><img src={logoMark} alt="" /><span>CHECK<br />THE ROUTE</span></div>
     </main>

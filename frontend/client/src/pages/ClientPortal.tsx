@@ -149,7 +149,7 @@ export default function ClientPortal() {
   const navItems = [
     { label: "Overview", path: "/client/overview", icon: ShieldCheck },
     { label: "Private premium", path: "/client/premium", icon: HeartPulse, badge: submissions.filter((s) => s.status === "pending_verification").length },
-    { label: "My policy", path: "/client/policy", icon: BadgeCheck, badge: policies.filter((p) => !p.onchain?.active && p.status !== "paid").length || undefined },
+    { label: "My policy", path: "/client/policy", icon: BadgeCheck, badge: policies.filter((p) => !p.onchain?.active).length || undefined },
     { label: "Claims", path: "/client/claims", icon: ReceiptText, badge: claims.filter((c) => c.status === "submitted").length },
   ];
 
@@ -318,11 +318,20 @@ export default function ClientPortal() {
                     <div className="progress-track"><i style={{ width: `${Math.min(100, (used / Math.max(limit, 1)) * 100)}%` }} /></div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 16 }}>
-                    <span className={`state-pill ${p.onchain?.active ? "ok" : "busy"}`}>{p.onchain?.active ? "ACTIVE" : p.status === "pending_payment" ? "PAYMENT DUE" : "AWAITING ACTIVATION"}</span>
-                    {!p.onchain?.active && p.status === "pending_payment" && (
-                      <button className="text-action" onClick={() => payPolicy(p)}>Pay premium <ArrowUpRight size={13} /></button>
+                    <span className={`state-pill ${p.onchain?.active ? "ok" : "busy"}`}>
+                      {p.onchain?.active ? "ACTIVE" : p.onchain ? "PAYMENT DUE" : "SYNCING…"}
+                    </span>
+                    {!p.onchain?.active && (
+                      <button className="text-action" onClick={() => payPolicy(p)}>
+                        Pay {(Number(p.premiumWei) / 1e18).toFixed(4)} ETH from wallet <ArrowUpRight size={13} />
+                      </button>
                     )}
                   </div>
+                  {!p.onchain?.active && (
+                    <small style={{ display: "block", marginTop: 8, opacity: 0.6 }}>
+                      Paying opens MetaMask and sends the exact premium to the policy contract from your connected wallet. The provider activates coverage once the payment lands.
+                    </small>
+                  )}
                   <small style={{ display: "block", marginTop: 12, opacity: 0.55 }}>Model bound: <span className="mono">{String(p.premiumModelId ?? "").slice(0, 18)}…</span></small>
                 </article>
               );
