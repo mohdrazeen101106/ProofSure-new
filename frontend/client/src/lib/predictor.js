@@ -32,6 +32,11 @@
  */
 
 import * as ort from "onnxruntime-web";
+// Vite-managed copies of ORT's runtime assets. `?url` yields plain asset URLs
+// that bypass the dev transform pipeline, so the browser's dynamic import of
+// the Emscripten loader works in both dev and production builds.
+import wasmSimdUrl from "./ort/ort-wasm-simd-threaded.wasm?url";
+import mjsSimdUrl from "./ort/ort-wasm-simd-threaded.mjs?url";
 
 /** @typedef {{
  *   gender: string, age: number, marital_status: string,
@@ -59,6 +64,13 @@ export class PremiumPredictor {
     const res = await fetch(this.paramsUrl);
     if (!res.ok) throw new Error(`Failed to load preprocess params: ${res.status}`);
     this.params = await res.json();
+
+    // Single-threaded wasm, assets resolved from Vite-bundled URLs.
+    ort.env.wasm.numThreads = 1;
+    ort.env.wasm.wasmPaths = {
+      mjs: mjsSimdUrl,
+      wasm: wasmSimdUrl,
+    };
 
     this.session = await ort.InferenceSession.create(this.onnxUrl, {
       executionProviders: ["wasm"],

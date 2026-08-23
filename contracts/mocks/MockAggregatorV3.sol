@@ -14,6 +14,9 @@ contract MockAggregatorV3 is AggregatorV3Interface {
     uint8 private _decimals;
     uint80 private _roundId = 1;
     uint256 private _updatedAt;
+    // Live feeds always report fresh timestamps. Set false via setRoundData()
+    // to simulate a backdated/stale feed for testing the StalePrice path.
+    bool private _live = true;
 
     constructor(int256 price_, uint8 decimals_) {
         _price = price_;
@@ -25,17 +28,20 @@ contract MockAggregatorV3 is AggregatorV3Interface {
         _price = p;
         _roundId++;
         _updatedAt = block.timestamp;
+        _live = true;
     }
 
     function setRoundData(int256 p, uint256 updatedAt_) external {
         _price = p;
         _updatedAt = updatedAt_;
         _roundId++;
+        _live = false;
     }
 
     function setDecimals(uint8 d) external { _decimals = d; }
 
     function decimals() external view returns (uint8) { return _decimals; }
+
     function description() external view returns (string memory) { return "Mock ETH/INR"; }
     function version() external view returns (uint256) { return 1; }
 
@@ -44,6 +50,7 @@ contract MockAggregatorV3 is AggregatorV3Interface {
     }
 
     function latestRoundData() external view returns (uint80, int256, uint256, uint256, uint80) {
-        return (_roundId, _price, 0, _updatedAt, _roundId);
+        uint256 upd = _live ? block.timestamp : _updatedAt;
+        return (_roundId, _price, 0, upd, _roundId);
     }
 }

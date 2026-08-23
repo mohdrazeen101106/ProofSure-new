@@ -1,10 +1,11 @@
 /**
  * ProofSure Hospital Portal — routed screens: Invoice desk and Key management.
- * Creates itemized invoices and signs them with the hospital's
- * EdDSA-Poseidon (BabyJubJub) key held by the backend for this role.
+ * The signing identity is the logged-in account's server-assigned hospital ID;
+ * invoices are addressed to a client and delivered through the backend, so the
+ * client receives them in their portal (no more copy/paste JSON hand-off).
  */
 import {
-  ArrowUpRight, BadgeCheck, Copy, FileSignature, KeyRound, Loader2, LockKeyhole, Stethoscope,
+  ArrowUpRight, BadgeCheck, FileSignature, KeyRound, Loader2, LockKeyhole, Send, Stethoscope,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
@@ -13,7 +14,6 @@ import PortalLayout, { SectionHead } from "@/components/PortalLayout";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 
-const HISTORY_KEY = "proofsure-hospital-invoices";
 const SECTIONS = ["invoice", "keys"] as const;
 type Section = (typeof SECTIONS)[number];
 
@@ -23,45 +23,51 @@ export default function HospitalPortal() {
   const raw = location.split("/")[2] ?? "";
   const section: Section = (SECTIONS as readonly string[]).includes(raw) ? (raw as Section) : "invoice";
 
-  const [hospitalId, setHospitalId] = useState(session?.hospitalId ?? "");
+  // Identity is bound to the login — never user-editable.
+  const hospitalId = session?.hospitalId ?? null;
+
+  const [clientEmail, setClientEmail] = useState("");
   const [policyId, setPolicyId] = useState("");
   const [treatmentCode, setTreatmentCode] = useState("1");
   const [admissionOffsetDays, setAdmissionOffsetDays] = useState(2);
   const [expenses, setExpenses] = useState("35000, 25000, 12000, 9000, 6500");
   const [signedInvoice, setSignedInvoice] = useState<any>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [invoices, setInvoices] = useState<any[]>([]);
   const [hospitals, setHospitals] = useState<any[]>([]);
-  const [history, setHistory] = useState<any[]>([]);
 
-  useEffect(() => {
-    api.hospitals().then(setHospitals).catch(() => {});
-    if (!hospitalId && !session?.hospitalId) setHospitalId("HOSP001");
-    try { setHistory(JSON.parse(localStorage.getItem(HISTORY_KEY) ?? "[]")); } catch { /* */ }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const refresh = async () => {
+    if (!hospitalId) return;
+    try { setInvoices(await api.hospitalInvoices()); } catch { /* */ }
+    try { setHospitals(await api.hospitals()); } catch { /* */ }
+  };
+
+  useEffect(() => { refresh(); }, [hospitalId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const expensePaise = () =>
     expenses.split(/[,\s]+/).filter(Boolean).map((r) => String(Math.round(Number(r) * 100)));
 
-  const sign = async () => {
-    if (!hospitalId || !policyId) return toast.error("Hospital ID and policy ID are required.");
+  const signAndSend = async () => {
+    if (!hospitalId) return toast.error("Your account has no hospital identity assigned.");
+    if (!policyId) return toast.error("Policy ID is required.");
     if (!expensePaise().length) return toast.error("Add at least one expense line.");
+    const email = clientEmail.trim().toLowerCase();
+    if (!email) return toast.error("Enter the client's email to deliver the invoice to.");
     setBusy("sign");
     try {
       const invoice = await api.signInvoice({
-        hospital_id: hospitalId,
         policy_id: policyId,
         treatment_code: Number(treatmentCode),
         admission_date: Math.floor(Date.now() / 1000) - 86400 * admissionOffsetDays,
         expenses_paise: expensePaise(),
+        clientEmail: email,
       });
       setSignedInvoice(invoice);
-      const next = [{ ...invoice }, ...history].slice(0, 20);
-      setHistory(next);
-      localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
-      toast.success(`Invoice #${invoice.invoice_id} signed`, {
-        description: `Total Rs ${(Number(invoice.total_expense_paise) / 100).toLocaleString("en-IN")} - EdDSA-Poseidon verified server-side.`,
+      setClientEmail("");
+      toast.success(`Invoice #${invoice.invoice_id} signed & delivered`, {
+        description: `Total Rs ${(Number(invoice.total_expense_paise) / 100).toLocaleString("en-IN")} — now visible in ${invoice.deliveredTo}'s claims screen.`,
       });
+      refresh();
     } catch (e) {
       toast.error("Signing failed", { description: (e as Error).message });
     } finally {
@@ -69,18 +75,12 @@ export default function HospitalPortal() {
     }
   };
 
-  const copyInvoice = async (inv: any) => {
-    await navigator.clipboard.writeText(JSON.stringify(inv, null, 2));
-    toast.success("Signed invoice copied", { description: "The client pastes this into their claims screen." });
-  };
-
   const generateKey = async () => {
-    if (!hospitalId) return toast.error("Enter your hospital ID first.");
     setBusy("key");
     try {
-      await api.generateHospitalKey(hospitalId);
+      await api.generateHospitalKey(hospitalId!);
       toast.success(`New key registered for ${hospitalId}`, { description: "Ask the provider to authorize it on-chain before issuing invoices." });
-      api.hospitals().then(setHospitals).catch(() => {});
+      refresh();
     } catch (e) {
       toast.error("Key generation failed", { description: (e as Error).message });
     } finally {
@@ -101,19 +101,26 @@ export default function HospitalPortal() {
         <div className="client-role-card">
           <div className="role-mark"><Stethoscope size={16} /></div>
           <div><span>IDENTITY</span><strong>{session?.name}</strong></div>
-          <p>Invoices are signed with your hospital's registered key. Fake keys fail the ZK authorization check.</p>
+          <p>Signing as <strong>{hospitalId ?? "unassigned"}</strong>. Invoices are signed with your hospital's registered key; fake identities fail the ZK check.</p>
         </div>
       }
     >
+      {!hospitalId && (
+        <section className="portal-notice" style={{ marginBottom: 18 }}>
+          <LockKeyhole size={16} />
+          <p><strong>No hospital identity.</strong> This account was created before identity binding existed. Ask the administrator to re-provision your hospital account.</p>
+        </section>
+      )}
+
       {section === "invoice" && (
         <>
-          <SectionHead kicker="SIGNED INVOICES" title={<>Issue a <em style={{ fontStyle: "italic" }}>verifiable invoice.</em></>} sub="Each invoice is EdDSA-Poseidon signed over its canonical fields. The claim circuit proves the signature against your registered public key without exposing the bill." />
+          <SectionHead kicker="SIGNED INVOICES" title={<>Issue a <em style={{ fontStyle: "italic" }}>verifiable invoice.</em></>} sub="Each invoice is EdDSA-Poseidon signed over its canonical fields and delivered straight into the named client's portal. The claim circuit proves the signature against your registered public key without exposing the bill." />
           <div className="card-grid-2">
             <article className="portal-panel dark proof-card" style={{ padding: 24 }}>
-              <div className="card-kicker"><span>NEW INVOICE</span><FileSignature size={17} /></div>
+              <div className="card-kicker"><span>NEW INVOICE — SIGNING AS {hospitalId ?? "?"}</span><FileSignature size={17} /></div>
               <div className="flow-grid" style={{ marginTop: 14 }}>
-                <div className="flow-field"><label>Hospital ID</label>
-                  <input value={hospitalId} onChange={(e) => setHospitalId(e.target.value)} placeholder="HOSP001" />
+                <div className="flow-field" style={{ gridColumn: "1 / -1" }}><label>Deliver to client (email)</label>
+                  <input value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} placeholder="client@proofsure.dev" />
                 </div>
                 <div className="flow-field"><label>Policy ID</label>
                   <input value={policyId} onChange={(e) => setPolicyId(e.target.value)} placeholder="e.g. 1" />
@@ -131,35 +138,32 @@ export default function HospitalPortal() {
                   <input value={expenses} onChange={(e) => setExpenses(e.target.value)} />
                 </div>
               </div>
-              <button className="dark-action" style={{ marginTop: 14 }} disabled={busy === "sign"} onClick={sign}>
-                {busy === "sign" ? <Loader2 className="animate-spin" size={15} /> : <FileSignature size={15} />} Sign invoice
+              <button className="dark-action" style={{ marginTop: 14 }} disabled={busy === "sign"} onClick={signAndSend}>
+                {busy === "sign" ? <Loader2 className="animate-spin" size={15} /> : <Send size={15} />} Sign &amp; deliver to client
               </button>
 
               {signedInvoice && (
                 <div className="flow-panel">
-                  <h4 style={{ margin: 0, fontSize: 12 }}>Signed bundle - invoice #{signedInvoice.invoice_id}</h4>
-                  <small>Total INR {(Number(signedInvoice.total_expense_paise) / 100).toLocaleString("en-IN")} - treatment code {signedInvoice.treatment_code}</small>
-                  <button className="outline-action" onClick={() => copyInvoice(signedInvoice)}>Copy JSON for client <ArrowUpRight size={14} /></button>
-                  <small style={{ opacity: 0.6 }}>Send this to the claimant. They combine it with private policy data inside the ZK prover.</small>
+                  <h4 style={{ margin: 0, fontSize: 12 }}>Invoice #{signedInvoice.invoice_id} — delivered</h4>
+                  <small>Total INR {(Number(signedInvoice.total_expense_paise) / 100).toLocaleString("en-IN")} · treatment code {signedInvoice.treatment_code} · to {signedInvoice.deliveredTo}</small>
+                  <small style={{ opacity: 0.6 }}>The client will find it under Claims in their portal, pre-filled and ready to prove.</small>
                 </div>
               )}
             </article>
 
             <article className="portal-panel" style={{ padding: 24 }}>
-              <h3>Issued invoices (this browser)</h3>
-              {history.length === 0 && <p style={{ fontSize: "0.8rem", opacity: 0.7 }}>Nothing issued yet.</p>}
+              <h3>Issued invoices (server ledger)</h3>
+              {invoices.length === 0 && <p style={{ fontSize: "0.8rem", opacity: 0.7 }}>Nothing issued yet.</p>}
               <div className="row-list" style={{ maxHeight: 380 }}>
-                {history.map((inv) => (
-                  <div className="row-item" key={inv.invoice_id}>
+                {invoices.map((inv) => (
+                  <div className="row-item" key={inv.invoiceId}>
                     <div>
-                      <strong>#{inv.invoice_id}</strong>
+                      <strong>#{inv.invoiceId} · policy {inv.policyId}</strong>
                       <small style={{ display: "block", opacity: 0.65 }}>
-                        policy #{inv.policy_id} - INR {(Number(inv.total_expense_paise) / 100).toLocaleString("en-IN")}
+                        INR {(Number(inv.totalExpensePaise) / 100).toLocaleString("en-IN")} → {inv.clientEmail}
                       </small>
                     </div>
-                    <button className="text-action" onClick={() => copyInvoice(inv)} aria-label={`Copy invoice ${inv.invoice_id}`}>
-                      Copy <Copy size={12} />
-                    </button>
+                    <span className={`state-pill ${inv.status === "claimed" ? "ok" : "busy"}`}>{inv.status.toUpperCase()}</span>
                   </div>
                 ))}
               </div>
@@ -170,18 +174,14 @@ export default function HospitalPortal() {
 
       {section === "keys" && (
         <>
-          <SectionHead kicker="KEY MANAGEMENT" title="Your signing keys" sub="The private key never leaves the ProofSure backend for this role. Only provider-authorized public keys pass the on-chain hospital registry." />
+          <SectionHead kicker="KEY MANAGEMENT" title="Your signing keys" sub={`Keys are generated for your bound identity (${hospitalId ?? "?"}) only. The private key never leaves the ProofSure backend. Only provider-authorized public keys pass the on-chain hospital registry.`} />
           <div className="card-grid-2">
             <article className="portal-panel" style={{ padding: 24 }}>
               <h3>Register a new key</h3>
               <p style={{ fontSize: "0.8rem", lineHeight: 1.6 }}>
-                Generate a fresh BabyJubJub keypair bound to your hospital ID. Then ask the provider to authorize it - until then, invoices signed by it will fail the circuit's authorization check.
+                Generate a fresh BabyJubJub keypair bound to <strong>{hospitalId ?? "your identity"}</strong>. Then ask the provider to authorize it — until then, invoices signed by it will fail the circuit's authorization check.
               </p>
-              <div className="flow-field" style={{ marginTop: 10 }}>
-                <label>Hospital ID</label>
-                <input value={hospitalId} onChange={(e) => setHospitalId(e.target.value)} placeholder="HOSP001" />
-              </div>
-              <button className="dark-action" style={{ marginTop: 12 }} disabled={busy === "key"} onClick={generateKey}>
+              <button className="dark-action" style={{ marginTop: 12 }} disabled={!hospitalId || busy === "key"} onClick={generateKey}>
                 {busy === "key" ? <Loader2 className="animate-spin" size={15} /> : <KeyRound size={15} />} Generate &amp; register key
               </button>
             </article>
@@ -193,10 +193,10 @@ export default function HospitalPortal() {
                 {Object.values(hospitals).map((h: any) => (
                   <div className="row-item" key={h.hospital_id}>
                     <div>
-                      <strong>{h.hospital_id}</strong>
+                      <strong>{h.hospital_id}{h.hospital_id === hospitalId ? " (you)" : ""}</strong>
                       <small style={{ display: "block", opacity: 0.6 }} className="mono">pk_x {String(h.pk_x).slice(0, 22)}...</small>
                     </div>
-                    <BadgeCheck size={15} style={{ opacity: 0.6 }} />
+                    <BadgeCheck size={15} style={{ opacity: h.hospital_id === hospitalId ? 1 : 0.35 }} />
                   </div>
                 ))}
               </div>

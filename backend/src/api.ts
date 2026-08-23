@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import crypto from "crypto";
 import { config, deploymentInfo } from "./config";
-import { authRouter, requireAuth, requireRole, User } from "./auth";
+import { authRouter, requireAuth, requireRole, users, User } from "./auth";
 import { store, PremiumSubmission, ClaimRecord } from "./store";
 import * as chain from "./chain";
 import { prover, descaleInstanceToInr } from "./prover";
@@ -103,6 +103,7 @@ api.post("/premium/prove", requireRole("client"), async (req, res) => {
       publicInputs: result.public_inputs,
       proveSeconds: result.prove_seconds,
       status: "pending_verification",
+      createdAt: new Date().toISOString(),
     };
     store.addPremiumSubmission(submission);
     store.addEvent("premium_proof_generated", { id: submission.id, predictionInr: Math.round(result.prediction_inr) });
@@ -209,6 +210,7 @@ api.post("/provider/policies", requireRole("provider"), async (req, res) => {
     store.addPolicy({
       id: policyId,
       holderWallet: holder.toLowerCase(),
+      clientEmail: sub.clientEmail,
       premiumWei: premiumWei.toString(),
       coverageLimitWei: coverageLimitWei.toString(),
       deductiblePaise: deductiblePaise.toString(),
@@ -278,7 +280,7 @@ api.post("/provider/policies/:id/activate", requireRole("provider"), async (req,
 api.get("/policies", requireAuth, async (req, res) => {
   const list =
     req.user!.role === "client"
-      ? store.listPolicies(req.user!.wallet?.toLowerCase())
+      ? store.listPoliciesForClient(req.user!.email, req.user!.wallet)
       : store.listPolicies();
   const enriched = [];
   for (const p of list) {
@@ -307,12 +309,15 @@ api.get("/hospitals", requireAuth, (_req, res) => {
 });
 
 api.post("/hospital/keys/generate", requireRole("hospital"), async (req, res) => {
-  const hospitalId = String(req.body?.hospitalId || "").trim();
-  if (!/^[A-Za-z0-9_-]{3,32}$/.test(hospitalId)) {
-    return res.status(400).json({ error: "hospitalId must be 3-32 alphanumeric characters." });
+  const hospitalId = req.user!.hospitalId ?? null;
+  if (!hospitalId) {
+    return res.status(403).json({ error: "Your account has no hospital identity assigned." });
+  }
+  const requested = String(req.body?.hospitalId || "").trim();
+  if (requested && requested !== hospitalId) {
+    return res.status(403).json({ error: `You can only manage keys for your own hospital identity (${hospitalId}).` });
   }
   const key = await generateHospitalKey(hospitalId, req.user!.name);
-  req.user!.hospitalId = hospitalId;
   store.addEvent("hospital_key_generated", { hospitalId });
   res.json(key);
 });
@@ -334,22 +339,76 @@ api.post("/provider/hospitals/authorize-key", requireRole("provider"), async (re
 
 api.post("/hospital/invoices/sign", requireRole("hospital"), async (req, res) => {
   const b = req.body || {};
-  if (!b.hospital_id || !b.policy_id || !b.treatment_code || !Array.isArray(b.expenses_paise)) {
-    return res.status(400).json({ error: "hospital_id, policy_id, treatment_code and expenses_paise are required." });
+  if (!b.policy_id || !b.treatment_code || !Array.isArray(b.expenses_paise)) {
+    return res.status(400).json({ error: "policy_id, treatment_code and expenses_paise are required." });
   }
-  if (req.user!.hospitalId && req.user!.hospitalId !== b.hospital_id) {
-    return res.status(403).json({ error: "You can only sign invoices for your own hospital identity." });
+  const hospitalId = req.user!.hospitalId ?? null;
+  if (!hospitalId) {
+    return res.status(403).json({ error: "Your account has no hospital identity assigned." });
+  }
+  if (b.hospital_id && b.hospital_id !== hospitalId) {
+    return res.status(403).json({ error: `You can only sign invoices for your own hospital identity (${hospitalId}).` });
+  }
+  const clientEmail = String(b.clientEmail || "").toLowerCase();
+  if (!clientEmail) {
+    return res.status(400).json({ error: "clientEmail is required — the invoice must be addressed to a client." });
+  }
+  const client = users[clientEmail];
+  if (!client || client.role !== "client") {
+    return res.status(404).json({ error: "No client account found with that email." });
   }
   try {
-    const invoice = await signInvoice(b);
+    // Force the signing identity to the logged-in hospital — never trust the body.
+    const invoice = await signInvoice({ ...b, hospital_id: hospitalId });
+    store.addInvoice({
+      invoiceId: invoice.invoice_id,
+      policyId: String(b.policy_id),
+      hospitalId,
+      clientEmail,
+      treatmentCode: Number(b.treatment_code),
+      totalExpensePaise: String(invoice.total_expense_paise),
+      doc: invoice,
+      status: "issued",
+      createdAt: new Date().toISOString(),
+    });
     store.addEvent("invoice_signed", {
-      hospital_id: b.hospital_id,
+      hospital_id: hospitalId,
       invoice_id: invoice.invoice_id,
       policy_id: String(b.policy_id),
+      deliveredTo: clientEmail,
     });
-    res.json(invoice);
+    res.json({ ...invoice, deliveredTo: clientEmail, status: "issued" });
   } catch (e) {
     res.status(400).json({ error: (e as Error).message });
+  }
+});
+
+api.get("/hospital/invoices", requireRole("hospital"), (req, res) => {
+  const list = store.db.invoices.filter((i) => i.hospitalId === req.user!.hospitalId);
+  res.json(list);
+});
+
+/** Invoices addressed to the logged-in client, ready to be claimed. */
+api.get("/invoices/mine", requireRole("client"), (req, res) => {
+  res.json(store.db.invoices.filter((i) => i.clientEmail === req.user!.email));
+});
+
+/** Live INR→ETH conversion from the on-chain aggregator (AggregatorV3 feed bound to the policy). */
+api.get("/convert/paise/:paise", requireAuth, async (req, res) => {
+  const paise = req.params.paise;
+  if (!/^\d+$/.test(paise)) return res.status(400).json({ error: "paise must be a non-negative integer." });
+  try {
+    const preview = await chain.payoutPreview(paise);
+    const dec = Number(preview.dec);
+    res.json({
+      paise: Number(paise),
+      weiAmt: preview.weiAmt,
+      eth: Number(BigInt(preview.weiAmt)) / 1e18,
+      priceInrPerEth: Number(BigInt(preview.price)) / 10 ** dec,
+      decimals: dec,
+    });
+  } catch (e) {
+    res.status(502).json({ error: (e as Error).message });
   }
 });
 
@@ -435,6 +494,11 @@ api.post("/claims", requireRole("client"), async (req, res) => {
     createdAt: new Date().toISOString(),
   };
   store.addClaim(claim);
+  if (claim.invoiceId) {
+    const inv = store.invoiceById(claim.invoiceId);
+    // Only the addressed client may consume the invoice.
+    if (inv && inv.clientEmail === req.user!.email) store.markInvoiceClaimed(claim.invoiceId);
+  }
   store.addEvent("claim_submitted", { id: claim.id, policyId, payoutPaise: claim.payoutPaise });
   res.status(201).json(claim);
 });

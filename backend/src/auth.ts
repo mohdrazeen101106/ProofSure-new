@@ -45,7 +45,7 @@ function loadUsers(): Record<string, User> {
   return seed;
 }
 
-let users = loadUsers();
+export let users = loadUsers();
 
 function persist() {
   fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
@@ -104,7 +104,7 @@ export function requireRole(...roles: Role[]) {
 export const authRouter = Router();
 
 authRouter.post("/register", (req, res) => {
-  const { email, password, name, role, wallet, hospitalId } = req.body || {};
+  const { email, password, name, role, wallet } = req.body || {};
   if (!email || !password || !name || !role) {
     return res.status(400).json({ error: "email, password, name and role are required." });
   }
@@ -117,13 +117,22 @@ authRouter.post("/register", (req, res) => {
   if (users[String(email).toLowerCase()]) {
     return res.status(409).json({ error: "An account with this email already exists." });
   }
+  // Hospital identity is server-assigned and unique — it binds the login to the
+  // EdDSA key registry entry used for invoice signing.
+  let hospitalId: string | null = null;
+  if (role === "hospital") {
+    const taken = new Set(Object.values(users).map((u) => u.hospitalId).filter(Boolean));
+    let n = 1;
+    while (taken.has(`HOSP${String(n).padStart(3, "0")}`)) n += 1;
+    hospitalId = `HOSP${String(n).padStart(3, "0")}`;
+  }
   const user: User = {
     email: String(email).toLowerCase(),
     passwordHash: bcrypt.hashSync(String(password), 10),
     name,
     role,
     wallet: wallet ?? null,
-    hospitalId: hospitalId ?? null,
+    hospitalId,
     createdAt: new Date().toISOString(),
   };
   users[user.email] = user;

@@ -71,6 +71,11 @@ export const api = {
 
   signInvoice: (b: Record<string, unknown>) =>
     call<Record<string, any>>("/hospital/invoices/sign", { method: "POST", body: JSON.stringify(b) }),
+  hospitalInvoices: () => call<any[]>("/hospital/invoices"),
+  myInvoices: () => call<any[]>("/invoices/mine"),
+
+  convertPaise: (paise: number | string) =>
+    call<{ paise: number; weiAmt: string; eth: number; priceInrPerEth: number }>(`/convert/paise/${paise}`),
 
   claimProve: (b: Record<string, unknown>) =>
     call<{ proofBytesHex: string; publicInputs: string[]; payoutPaise: string; claimNullifier: string }>("/claims/prove", { method: "POST", body: JSON.stringify(b) }),

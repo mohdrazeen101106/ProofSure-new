@@ -163,6 +163,11 @@ export default defineConfig({
   },
   envDir: path.resolve(import.meta.dirname),
   root: path.resolve(import.meta.dirname, "client"),
+  // onnxruntime-web dynamically imports its .wasm/.mjs runtime files from /public/ort
+  // at run time; pre-bundling rewrites those imports and breaks them. Serve it raw.
+  optimizeDeps: {
+    exclude: ["onnxruntime-web"],
+  },
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,

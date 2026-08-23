@@ -11,6 +11,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import PortalLayout, { SectionHead } from "@/components/PortalLayout";
+import { useAuth } from "@/contexts/AuthContext";
 import { api } from "@/lib/api";
 import { hasWallet, payPremium } from "@/lib/wallet";
 import { PremiumPredictor } from "@/lib/predictor.js";
@@ -32,6 +33,7 @@ const SECTIONS = ["overview", "premium", "policy", "claims"] as const;
 type Section = (typeof SECTIONS)[number];
 
 export default function ClientPortal() {
+  const { session } = useAuth();
   const [location] = useLocation();
   const raw = location.split("/")[2] ?? "";
   const section: Section = (SECTIONS as readonly string[]).includes(raw) ? (raw as Section) : "overview";
@@ -43,6 +45,7 @@ export default function ClientPortal() {
   const [submissionId, setSubmissionId] = useState<string | null>(null);
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [invoiceText, setInvoiceText] = useState("");
+  const [invoices, setInvoices] = useState<any[]>([]);
   const [claimResult, setClaimResult] = useState<{ txHash?: string; payout?: string } | null>(null);
   const [policies, setPolicies] = useState<any[]>([]);
   const [claims, setClaims] = useState<any[]>([]);
@@ -53,6 +56,7 @@ export default function ClientPortal() {
     try { setPolicies(await api.policies()); } catch { /* auth */ }
     try { setClaims(await api.claims()); } catch { /* */ }
     try { setSubmissions(await api.mySubmissions()); } catch { /* */ }
+    try { setInvoices(await api.myInvoices()); } catch { /* */ }
   };
 
   useEffect(() => {
@@ -84,6 +88,9 @@ export default function ClientPortal() {
       setLocalPremium(r.predictionInr);
       setFlow("waiting_verification");
       toast.success(`ZKML proof generated (${r.proveSeconds.toFixed(1)}s)`, { description: `Submission ${r.id} is now in the provider verification queue.` });
+      if (!session?.wallet) {
+        toast.warning("Bind your wallet so the provider can create your policy", { description: "Account menu (top right) → Connect wallet. The provider needs your address to attach to the policy." });
+      }
       refresh();
     } catch (e) {
       setFlow("failed");
@@ -277,7 +284,7 @@ export default function ClientPortal() {
                 <div className="row-item" key={s.id}>
                   <div>
                     <strong className="mono">{s.id}</strong>
-                    <small style={{ display: "block", opacity: 0.65 }}>claimed ₹{Math.round(s.predictionInr).toLocaleString("en-IN")} · {new Date(s.createdAt).toLocaleString()}</small>
+                    <small style={{ display: "block", opacity: 0.65 }}>claimed ₹{Math.round(s.predictionInr).toLocaleString("en-IN")} · {s.createdAt && !Number.isNaN(new Date(s.createdAt).getTime()) ? new Date(s.createdAt).toLocaleString() : "just now"}</small>
                   </div>
                   <span className={`state-pill ${s.status === "verified" ? "ok" : s.status === "rejected" ? "err" : "busy"}`}>{s.status.replace(/_/g, " ").toUpperCase()}</span>
                 </div>
@@ -330,9 +337,33 @@ export default function ClientPortal() {
           <div className="card-grid-2">
             <article className="portal-panel" style={{ padding: 24 }}>
               <h3>Signed hospital invoice</h3>
+              {invoices.length > 0 && (
+                <>
+                  <p style={{ fontSize: "0.72rem", opacity: 0.7, margin: "0 0 8px" }}>Invoices delivered to you:</p>
+                  <div className="row-list" style={{ maxHeight: 150, marginBottom: 12 }}>
+                    {invoices.map((inv) => (
+                      <div className="row-item" key={inv.invoiceId}>
+                        <div>
+                          <strong>#{inv.invoiceId} · policy {inv.policyId}</strong>
+                          <small style={{ display: "block", opacity: 0.65 }}>
+                            ₹{(Number(inv.totalExpensePaise) / 100).toLocaleString("en-IN")} · from {inv.hospitalId}
+                          </small>
+                        </div>
+                        <button
+                          className="text-action"
+                          disabled={inv.status === "claimed"}
+                          onClick={() => { setInvoiceText(JSON.stringify(inv.doc, null, 2)); toast.success(`Invoice #${inv.invoiceId} loaded`); }}
+                        >
+                          {inv.status === "claimed" ? "CLAIMED" : "USE →"}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
               <textarea
                 className="mono"
-                style={{ width: "100%", minHeight: 150, border: "1px solid color-mix(in srgb, currentColor 18%, transparent)", background: "transparent", borderRadius: 10, padding: 10 }}
+                style={{ width: "100%", minHeight: 130, border: "1px solid color-mix(in srgb, currentColor 18%, transparent)", background: "transparent", borderRadius: 10, padding: 10 }}
                 placeholder='{"format":"signed_hospital_invoice_v1", ...}'
                 value={invoiceText}
                 onChange={(e) => { setInvoiceText(e.target.value); if (e.target.value.includes("signed_hospital_invoice_v1")) setFlow("hospital_invoice_received"); }}
@@ -376,10 +407,25 @@ const STATE_LABELS: Partial<Record<FlowState, string>> = {
 };
 
 function NumField({ label, value, onChange, step }: { label: string; value: number; onChange: (v: number) => void; step?: string }) {
+  // Draft string lets the field be momentarily empty while typing;
+  // only valid numbers are committed to the model input.
+  const [draft, setDraft] = useState<string | null>(null);
   return (
     <div className="flow-field">
       <label>{label}</label>
-      <input type="number" step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} />
+      <input
+        type="number"
+        step={step}
+        value={draft ?? String(value)}
+        onFocus={() => setDraft(value === 0 ? "" : String(value))}
+        onChange={(e) => {
+          const raw = e.target.value;
+          setDraft(raw);
+          const n = Number(raw);
+          if (raw.trim() !== "" && Number.isFinite(n)) onChange(n);
+        }}
+        onBlur={() => setDraft(null)}
+      />
     </div>
   );
 }

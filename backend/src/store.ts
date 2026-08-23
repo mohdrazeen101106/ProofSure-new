@@ -10,6 +10,7 @@ interface Db {
   claims: ClaimRecord[];
   policies: PolicyRecord[];
   hospitalKeys: Record<string, { sk_hex: string; pk_x: string; pk_y: string; label?: string }>;
+  invoices: InvoiceRecord[];
   events: EventRecord[];
 }
 
@@ -24,11 +25,13 @@ export interface PremiumSubmission {
   status: "pending_verification" | "verified" | "rejected" | "used";
   verifiedAt?: string;
   usedForPolicyId?: number;
+  createdAt?: string;
 }
 
 export interface PolicyRecord {
   id: number;
   holderWallet: string;
+  clientEmail?: string | null;
   premiumWei: string;
   coverageLimitWei: string;
   deductiblePaise: string;
@@ -63,19 +66,34 @@ export interface EventRecord {
   data: Record<string, unknown>;
 }
 
+export interface InvoiceRecord {
+  invoiceId: number;
+  policyId: string;
+  hospitalId: string;
+  clientEmail: string;
+  treatmentCode: number;
+  totalExpensePaise: string;
+  doc: unknown;
+  status: "issued" | "claimed";
+  createdAt: string;
+}
+
 let db: Db;
 
 function load(): Db {
   if (!fs.existsSync(config.dataDir)) fs.mkdirSync(config.dataDir, { recursive: true });
   const file = path.join(config.dataDir, "state.json");
   if (fs.existsSync(file)) {
-    return JSON.parse(fs.readFileSync(file, "utf8"));
+    const parsed = JSON.parse(fs.readFileSync(file, "utf8"));
+    parsed.invoices ??= [];
+    return parsed;
   }
   return {
     premiumSubmissions: [],
     claims: [],
     policies: [],
     hospitalKeys: {},
+    invoices: [],
     events: [],
   };
 }
@@ -96,6 +114,21 @@ export const store = {
     db.events.unshift({ ts: new Date().toISOString(), type, data });
     db.events = db.events.slice(0, 200);
     save();
+  },
+
+  addInvoice(inv: InvoiceRecord) {
+    db.invoices.unshift(inv);
+    save();
+  },
+  invoiceById(invoiceId: number) {
+    return db.invoices.find((i) => i.invoiceId === invoiceId);
+  },
+  markInvoiceClaimed(invoiceId: number) {
+    const inv = db.invoices.find((i) => i.invoiceId === invoiceId);
+    if (inv && inv.status === "issued") {
+      inv.status = "claimed";
+      save();
+    }
   },
 
   addPremiumSubmission(s: PremiumSubmission) {
@@ -125,6 +158,11 @@ export const store = {
   },
   listPolicies(holder?: string) {
     return holder ? db.policies.filter((p) => p.holderWallet === holder) : db.policies;
+  },
+  /** Clients may only see policies bound to their account email or wallet. */
+  listPoliciesForClient(email: string, wallet?: string | null) {
+    const w = wallet?.toLowerCase();
+    return db.policies.filter((p) => p.clientEmail === email || (w && p.holderWallet === w));
   },
 
   addClaim(c: ClaimRecord) {
