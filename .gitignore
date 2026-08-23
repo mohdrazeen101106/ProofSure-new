@@ -1,0 +1,16 @@
+node_modules/
+.venv/
+dist/
+out/
+cache/
+.DS_Store
+backend/.data/
+services/premium-prover/runs/
+contracts/deployment.json
+*.log
+.env
+frontend/.manus-logs/
+.data/
+build/
+claim-zk2/
+services/premium-prover/ezkl_workspace/key.pk

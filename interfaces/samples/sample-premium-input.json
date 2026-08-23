@@ -1,0 +1,18 @@
+{
+  "gender": "M",
+  "age": 35,
+  "marital_status": "Married",
+  "occupation_type": "Salaried",
+  "annual_income_inr": 900000,
+  "bmi": 26.5,
+  "tobacco_usage": "none",
+  "alcohol_units_per_week": 2,
+  "physical_activity_level": "moderate",
+  "diet_type": "non-veg",
+  "has_diabetes": 0,
+  "has_hypertension": 0,
+  "family_history_cardiac": 1,
+  "stress_level_score": 5,
+  "policy_type": "individual",
+  "sum_insured": 500000
+}

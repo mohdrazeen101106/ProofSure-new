@@ -1,0 +1,63 @@
+{
+  "seed": 42,
+  "numeric_cols": [
+    "age",
+    "annual_income_inr",
+    "bmi",
+    "alcohol_units_per_week",
+    "stress_level_score",
+    "sum_insured"
+  ],
+  "binary_cols": [
+    "has_diabetes",
+    "has_hypertension",
+    "family_history_cardiac"
+  ],
+  "categorical_cols": [
+    "gender",
+    "marital_status",
+    "occupation_type",
+    "tobacco_usage",
+    "physical_activity_level",
+    "diet_type",
+    "policy_type"
+  ],
+  "target_col": "Claim_Amount",
+  "n_features": 34,
+  "feature_names_out": [
+    "num__age",
+    "num__annual_income_inr",
+    "num__bmi",
+    "num__alcohol_units_per_week",
+    "num__stress_level_score",
+    "num__sum_insured",
+    "bin__has_diabetes",
+    "bin__has_hypertension",
+    "bin__family_history_cardiac",
+    "cat__gender_M",
+    "cat__marital_status_Divorced",
+    "cat__marital_status_Married",
+    "cat__marital_status_Single",
+    "cat__marital_status_Widowed",
+    "cat__occupation_type_Business",
+    "cat__occupation_type_Retired",
+    "cat__occupation_type_Salaried",
+    "cat__occupation_type_Self-employed",
+    "cat__occupation_type_Student",
+    "cat__occupation_type_Unemployed",
+    "cat__tobacco_usage_both",
+    "cat__tobacco_usage_chewing",
+    "cat__tobacco_usage_none",
+    "cat__tobacco_usage_smoking",
+    "cat__physical_activity_level_high",
+    "cat__physical_activity_level_low",
+    "cat__physical_activity_level_moderate",
+    "cat__diet_type_eggetarian",
+    "cat__diet_type_non-veg",
+    "cat__diet_type_veg",
+    "cat__diet_type_vegan",
+    "cat__policy_type_family_floater",
+    "cat__policy_type_individual",
+    "cat__policy_type_senior_citizen"
+  ]
+}

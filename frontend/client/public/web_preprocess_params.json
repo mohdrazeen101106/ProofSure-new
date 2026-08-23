@@ -1,0 +1,162 @@
+{
+  "seed": 42,
+  "feature_order": [
+    "num__age",
+    "num__annual_income_inr",
+    "num__bmi",
+    "num__alcohol_units_per_week",
+    "num__stress_level_score",
+    "num__sum_insured",
+    "bin__has_diabetes",
+    "bin__has_hypertension",
+    "bin__family_history_cardiac",
+    "cat__gender_M",
+    "cat__marital_status_Divorced",
+    "cat__marital_status_Married",
+    "cat__marital_status_Single",
+    "cat__marital_status_Widowed",
+    "cat__occupation_type_Business",
+    "cat__occupation_type_Retired",
+    "cat__occupation_type_Salaried",
+    "cat__occupation_type_Self-employed",
+    "cat__occupation_type_Student",
+    "cat__occupation_type_Unemployed",
+    "cat__tobacco_usage_both",
+    "cat__tobacco_usage_chewing",
+    "cat__tobacco_usage_none",
+    "cat__tobacco_usage_smoking",
+    "cat__physical_activity_level_high",
+    "cat__physical_activity_level_low",
+    "cat__physical_activity_level_moderate",
+    "cat__diet_type_eggetarian",
+    "cat__diet_type_non-veg",
+    "cat__diet_type_veg",
+    "cat__diet_type_vegan",
+    "cat__policy_type_family_floater",
+    "cat__policy_type_individual",
+    "cat__policy_type_senior_citizen"
+  ],
+  "numeric": {
+    "columns": [
+      "age",
+      "annual_income_inr",
+      "bmi",
+      "alcohol_units_per_week",
+      "stress_level_score",
+      "sum_insured"
+    ],
+    "mean": [
+      41.58640625,
+      833645.8203125,
+      25.5271875,
+      3.0025,
+      5.013182603020591,
+      1764453.125
+    ],
+    "scale": [
+      15.084865228432136,
+      438085.50232359447,
+      4.742086654611422,
+      1.7540114737367027,
+      1.8804120950065961,
+      1720926.4894752868
+    ]
+  },
+  "binary": {
+    "columns": [
+      "has_diabetes",
+      "has_hypertension",
+      "family_history_cardiac"
+    ]
+  },
+  "categorical": {
+    "columns": [
+      "gender",
+      "marital_status",
+      "occupation_type",
+      "tobacco_usage",
+      "physical_activity_level",
+      "diet_type",
+      "policy_type"
+    ],
+    "per_column": [
+      {
+        "column": "gender",
+        "categories": [
+          "F",
+          "M"
+        ],
+        "dropped_category": "F"
+      },
+      {
+        "column": "marital_status",
+        "categories": [
+          "Divorced",
+          "Married",
+          "Single",
+          "Widowed"
+        ],
+        "dropped_category": null
+      },
+      {
+        "column": "occupation_type",
+        "categories": [
+          "Business",
+          "Retired",
+          "Salaried",
+          "Self-employed",
+          "Student",
+          "Unemployed"
+        ],
+        "dropped_category": null
+      },
+      {
+        "column": "tobacco_usage",
+        "categories": [
+          "both",
+          "chewing",
+          "none",
+          "smoking"
+        ],
+        "dropped_category": null
+      },
+      {
+        "column": "physical_activity_level",
+        "categories": [
+          "high",
+          "low",
+          "moderate"
+        ],
+        "dropped_category": null
+      },
+      {
+        "column": "diet_type",
+        "categories": [
+          "eggetarian",
+          "non-veg",
+          "veg",
+          "vegan"
+        ],
+        "dropped_category": null
+      },
+      {
+        "column": "policy_type",
+        "categories": [
+          "family_floater",
+          "individual",
+          "senior_citizen"
+        ],
+        "dropped_category": null
+      }
+    ]
+  },
+  "target": {
+    "mean": [
+      121759.2603125
+    ],
+    "scale": [
+      67670.9748983689
+    ]
+  },
+  "n_features": 34
+}

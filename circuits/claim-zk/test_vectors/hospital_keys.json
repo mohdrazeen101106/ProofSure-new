@@ -1,0 +1,9 @@
+{
+  "format": "hospital_keys_v1",
+  "HOSP001": {
+    "sk_hex": "eb3718c4583beec57ab11d839234a44844f786a2928ef2034aecd49283939fb3"
+  },
+  "FAKE999": {
+    "sk_hex": "455b00827a8e94dd7da1d7a94a492d9f915253ca6d58fde04362773b175c85eb"
+  }
+}

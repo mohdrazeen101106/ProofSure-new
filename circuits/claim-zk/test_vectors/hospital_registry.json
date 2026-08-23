@@ -1,0 +1,21 @@
+{
+  "format": "hospital_registry_v1",
+  "note": "Contract stores this allowlist. Only listed pubkeys pass the ZK check.",
+  "hospitals": [
+    {
+      "hospital_id": "HOSP001",
+      "name": "Apollo Demo Hospital",
+      "pk_x": "14356436510628464141481276967685016350161420144463377789029479592270911206734",
+      "pk_y": "2095218806682237529603165301270652933457510815089531564992792826502866980454",
+      "packed_pk_hex": "070a0ce3e23c98203e1765ab36fb9c74f9a33e66ab050517920658b2e5360d2f83675c0eb924cd460ec2ac9cee1da7d863e58facc10a864a40d32d4b345ad825"
+    },
+    {
+      "hospital_id": "FAKE999",
+      "name": "Unauthorized Hospital (negative-test key)",
+      "pk_x": "17052646698626306455801222113529527478911079250288606856849247720319513932486",
+      "pk_y": "16088110472657494026042036742580281035437381503067782727496054783205705322576",
+      "packed_pk_hex": "1778bd168e1319ae20554f0a72e1b0a04f0785b6bd0b9c7307f3e4afa1c94f0f9acfa831e60b8ec74bf4c5be93ecad4a03cf8e161cd39a3540f3f15fc387d42a",
+      "authorized": false
+    }
+  ]
+}

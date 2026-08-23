@@ -1,0 +1,30 @@
+{
+  "hospital_id": "HOSP001",
+  "signed_invoice": {
+    "format": "signed_hospital_invoice_v1",
+    "encoding_note": "All numeric fields are integers. Amounts in PAISE. Signature is EdDSA-Poseidon (BabyJubJub) over Poseidon([invoice_id, policy_id, patient_commitment, treatment_code, admission_date, discharge_date, total_expense]).",
+    "hospital_id": "HOSP001",
+    "invoice_id": 100237,
+    "policy_id": 555000111,
+    "patient_commitment": "815629497195479735851808386230875549809900318070465736140300812153719364",
+    "treatment_code": 1,
+    "treatment_name": "HOSPITALIZATION",
+    "admission_date": 1770662400,
+    "discharge_date": 1770748800,
+    "expenses_paise": [
+      "3500000",
+      "2500000",
+      "1200000",
+      "900000",
+      "650000",
+      "0",
+      "0",
+      "0"
+    ],
+    "total_expense_paise": "8750000",
+    "signature_r_x": "5e25022607b9570960205e1fd198799222bbed9f57accda187fb6cca74b0f003",
+    "signature_r_y": "e9e5b454e20ee6ec1a0ae84c696c2023b1e3c1ff9a74d0a09cb02f93c1077f0e",
+    "signature_s": "2451561815146874326605912395239728310368778124749055136107668809514441334699"
+  },
+  "note": "EdDSA-Poseidon over BabyJubJub; sig over Poseidon([invoice_id,policy_id,patient_commitment,treatment_code,admission_date,discharge_date,total_expense])"
+}
