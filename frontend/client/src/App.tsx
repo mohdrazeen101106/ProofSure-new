@@ -21,9 +21,9 @@ function Router() {
       <Route path="/login">{() => <AuthPage mode="login" />}</Route>
       <Route path="/signup">{() => <AuthPage mode="signup" />}</Route>
       <Route path="/access-denied" component={AccessDenied} />
-      <Route path="/client">{() => <RoleGate role="client"><ClientPortal /></RoleGate>}</Route>
-      <Route path="/hospital">{() => <RoleGate role="hospital"><HospitalPortal /></RoleGate>}</Route>
-      <Route path="/provider">{() => <RoleGate role="provider"><ProviderPortal /></RoleGate>}</Route>
+      <Route path="/client/:section?">{() => <RoleGate role="client"><ClientPortal /></RoleGate>}</Route>
+      <Route path="/hospital/:section?">{() => <RoleGate role="hospital"><HospitalPortal /></RoleGate>}</Route>
+      <Route path="/provider/:section?">{() => <RoleGate role="provider"><ProviderPortal /></RoleGate>}</Route>
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
