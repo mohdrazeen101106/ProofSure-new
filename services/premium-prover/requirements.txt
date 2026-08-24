@@ -1,10 +1,26 @@
-fastapi>=0.110
-uvicorn[standard]>=0.29
-pydantic>=2
-ezkl>=23.0
+# ProofSure premium-prover dependencies (FastAPI + EZKL service)
+#
+# Platform support:
+#   - Linux x86_64 / aarch64      : fully supported
+#   - macOS x86_64 / arm64        : fully supported
+#   - Windows                     : NO native ezkl wheels — run this service under
+#                                   WSL2 instead (see README -> Windows setup)
+#
+# Use a 64-bit Python 3.10-3.12 venv (ezkl does not publish 3.13+ wheels yet).
+
+fastapi>=0.110,<1
+uvicorn[standard]>=0.29,<1
+pydantic>=2,<3
+ezkl>=23.0                # ZKML proving (KZG); wheels for Linux + macOS only
 joblib>=1.3
-numpy>=1.26
-pandas>=2.0
-onnxruntime>=1.24
-python-multipart
-scikit-learn
+numpy>=1.26,<3
+pandas>=2.0,<3
+onnxruntime>=1.19,<2      # 1.24+ wheels not yet published for all platforms;
+                          # any >=1.19 satisfies app.py's InferenceSession usage
+python-multipart>=0.0.9
+scikit-learn>=1.4
+torch>=2.2                # imported directly by app.py (/predict de-scaling);
+                          # previously satisfied only as ezkl's transitive dep.
+                          # Optional: install the CPU-only wheel first to skip
+                          # the large CUDA download on machines w/o GPUs:
+                          #   pip install torch --index-url https://download.pytorch.org/whl/cpu
